@@ -1,5 +1,6 @@
 package com.pilabor.pandero
 
+import android.animation.ObjectAnimator
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -11,10 +12,44 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.core.animation.doOnEnd
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.pilabor.pandero.ui.theme.PanderoTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+    var isSplashScreenVisible = true;
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen().apply {
+            setKeepOnScreenCondition { isSplashScreenVisible }
+            setOnExitAnimationListener { splashScreenProvider ->
+                var zoomX = ObjectAnimator.ofFloat(
+                    splashScreenProvider.iconView,
+                    "scaleX",
+                    0.4f,
+                    0f
+                )
+                var zoomY = ObjectAnimator.ofFloat(
+                    splashScreenProvider.iconView,
+                    "scaleY",
+                    0.4f,
+                    0f
+                )
+                zoomX.duration = 500
+                zoomX.doOnEnd {
+                    splashScreenProvider.remove()
+                }
+                zoomY.duration = 500;
+                zoomY.doOnEnd {
+                    splashScreenProvider.remove()
+                }
+                zoomX.start()
+                zoomY.start()
+            }
+        }
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
@@ -26,6 +61,9 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
+        }
+        CoroutineScope(Dispatchers.IO).launch {
+            delay(2000)
         }
     }
 }
