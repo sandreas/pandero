@@ -16,6 +16,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.pilabor.pandero.ui.theme.PanderoTheme
 import com.pilabor.pandero.MainViewModel
 import org.koin.androidx.viewmodel.ext.android.viewModel
+import androidx.compose.foundation.layout.Box
+import androidx.navigation.compose.rememberNavController
+import com.pilabor.pandero.ui.navigation.AppNavGraph
+import com.pilabor.pandero.ui.navigation.HomeRoute
 
 class MainActivity : ComponentActivity() {
     val viewModel: MainViewModel by viewModel()
@@ -27,16 +31,18 @@ class MainActivity : ComponentActivity() {
         setContent {
             PanderoTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "State-Value:" + viewModel.status.collectAsState().value,
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                    Box(modifier = Modifier.padding(innerPadding)) {
+                        AppNavGraph(
+                            navController = rememberNavController(),
+                            startDestination = HomeRoute /*if(viewModel.isUserLoggedIn()) HomeRoute else OnboardingRoute*/
+                        )
+                    }
                 }
             }
         }
     }
 }
-
+/*
 @Composable
 fun Greeting(name: String, modifier: Modifier = Modifier) {
     Text(
@@ -52,3 +58,5 @@ fun GreetingPreview() {
         Greeting("Android")
     }
 }
+
+ */

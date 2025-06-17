@@ -2,6 +2,7 @@ package com.pilabor.pandero
 
 import android.app.Application
 import com.pilabor.pandero.di.NetworkModule
+import com.pilabor.pandero.utils.NotificationHelper
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
 import org.koin.ksp.generated.defaultModule
@@ -15,5 +16,6 @@ class PanderoApp: Application() {
             // needs "build > assemble app" for new modules to work properly
             modules(defaultModule, NetworkModule().module)
         }
+        NotificationHelper.createNotificationChannel(this)
     }
 }
