@@ -3,6 +3,10 @@ Pandero audio player - native Anroid audio player written in Kotlin
 
 Tutorial: https://www.youtube.com/watch?v=HsSIgjraJq0&list=PL0pXjGnY7POQCLkvT6jRpCDGnBZLe2HGW&index=2
 
+# Todo
+- [ ] check https://stackoverflow.com/questions/59691239/java-lang-illegalstateexception-koinapplication-has-not-been-started
+
+
 # Initial steps
 
 ## Project
