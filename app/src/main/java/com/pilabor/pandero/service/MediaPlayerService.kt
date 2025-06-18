@@ -6,6 +6,7 @@ import android.app.Service
 import android.content.Intent
 import android.os.Binder
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
@@ -33,14 +34,14 @@ import kotlin.concurrent.timerTask
 class MediaPlayerService : Service() {
 
     companion object {
-        const val ACTION_PLAY = "com.codewithfk.musify_android.ACTION_PLAY"
-        const val ACTION_PAUSE = "com.codewithfk.musify_android.ACTION_PAUSE"
-        const val ACTION_STOP = "com.codewithfk.musify_android.ACTION_STOP"
-        const val ACTION_PREVIOUS = "com.codewithfk.musify_android.ACTION_PREVIOUS"
-        const val ACTION_NEXT = "com.codewithfk.musify_android.ACTION_NEXT"
-        const val ACTION_PREPARE_SONG = "com.codewithfk.musify_android.ACTION_PREPARE_SONG"
-
-        val KEY_SONG = "SONG"
+        const val KEY_SONG = "SONG"
+        const val KEY_TAG = "PanderoMediaPlayerService"
+        const val ACTION_PLAY = "com.pilabor.pandero.ACTION_PLAY"
+        const val ACTION_PAUSE = "com.pilabor.pandero.ACTION_PAUSE"
+        const val ACTION_STOP = "com.pilabor.pandero.ACTION_STOP"
+        const val ACTION_PREVIOUS = "com.pilabor.pandero.ACTION_PREVIOUS"
+        const val ACTION_NEXT = "com.pilabor.pandero.ACTION_NEXT"
+        const val ACTION_PREPARE_SONG = "com.pilabor.pandero.ACTION_PREPARE_SONG"
     }
 
     inner class MusicBinder : Binder() {
@@ -144,8 +145,6 @@ class MediaPlayerService : Service() {
 
 
     val mediaSessionCallBack = object : MediaSessionCompat.Callback() {
-
-
         override fun onPlay() {
             resumeSong()
         }
@@ -178,9 +177,9 @@ class MediaPlayerService : Service() {
         fun onSeek(offset: Long) {
             val currentPos = exoPlayer.currentPosition
             var newPosition = currentPos + offset
-            if(newPosition < 0 ) {
+            if (newPosition < 0) {
                 newPosition = 0;
-            } else if(newPosition > exoPlayer.duration) {
+            } else if (newPosition > exoPlayer.duration) {
                 newPosition = exoPlayer.duration - 1;
             }
             super.onSeekTo(newPosition)
@@ -195,17 +194,18 @@ class MediaPlayerService : Service() {
         /* CUSTOM sandreas! */
 
         val tag = "MediaSessionCompat.Callback()"
-        var clickPressed  = false
-        var clickCount = 0
-        var clickTimer: Timer = Timer()
-        var clickTimerScheduled = false;
-        var clickTimerId: Long = System.currentTimeMillis()
-        var lastStatePlaying : Boolean = false;
-        var stopSeeking : Boolean = false;
+        val seekPlayBufferTime = 450L
 
+        var clickPressed = false
+        var clickCount = 0
+        var clickTimer = Timer()
+        var clickTimerScheduled = false;
+        var clickTimerId = System.currentTimeMillis()
+        var lastStatePlaying = false;
+        var stopSeeking = false;
 
         override fun onMediaButtonEvent(intent: Intent): Boolean {
-            if(Intent.ACTION_MEDIA_BUTTON != intent.action) {
+            if (Intent.ACTION_MEDIA_BUTTON != intent.action) {
                 return false;
             }
             val keyEvent = if (Build.VERSION.SDK_INT >= 33) {
@@ -237,7 +237,7 @@ class MediaPlayerService : Service() {
             } else if (keyEvent?.action == KeyEvent.ACTION_DOWN) {
                 // Log.d(tag, "=== KeyEvent.ACTION_DOWN")
 
-                if(clickPressed) {
+                if (clickPressed) {
                     return false
                 }
                 clickPressed = true
@@ -248,7 +248,10 @@ class MediaPlayerService : Service() {
                     KeyEvent.KEYCODE_MEDIA_PAUSE,
                     KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
                         clickCount++
-                        Log.d(tag, "=== handleCallMediaButton: Headset Hook/Play/ Pause, clickCount=$clickCount")
+                        Log.d(
+                            tag,
+                            "=== handleCallMediaButton: Headset Hook/Play/ Pause, clickCount=$clickCount"
+                        )
                     }
 
                     KeyEvent.KEYCODE_MEDIA_NEXT -> {
@@ -258,7 +261,10 @@ class MediaPlayerService : Service() {
 
                     KeyEvent.KEYCODE_MEDIA_PREVIOUS -> {
                         clickCount += 3
-                        Log.d(tag, "=== handleCallMediaButton: Media Previous, clickCount=$clickCount")
+                        Log.d(
+                            tag,
+                            "=== handleCallMediaButton: Media Previous, clickCount=$clickCount"
+                        )
                     }
 
                     KeyEvent.KEYCODE_MEDIA_STOP -> {
@@ -266,21 +272,29 @@ class MediaPlayerService : Service() {
                         onStop()
                         clickTimer.cancel()
                         return true
-                    } else -> {
-                    Log.d(tag, "=== KeyCode:${keyEvent.keyCode}, clickCount=$clickCount")
-                    return false
-                }
+                    }
+
+                    else -> {
+                        Log.d(tag, "=== KeyCode:${keyEvent.keyCode}, clickCount=$clickCount")
+                        return false
+                    }
                 }
             }
 
-            if(clickTimerScheduled) {
-                Log.d(tag, "=== clickTimer cancelled ($clickTimerId): clicks=$clickCount, hold=$clickPressed =========")
+            if (clickTimerScheduled) {
+                Log.d(
+                    tag,
+                    "=== clickTimer cancelled ($clickTimerId): clicks=$clickCount, hold=$clickPressed ========="
+                )
                 clickTimer.cancel()
                 clickTimer = Timer()
             }
 
             clickTimer.schedule(timerTask {
-                Log.d(tag, "=== clickTimer executed ($clickTimerId): clicks=$clickCount, hold=$clickPressed =========")
+                Log.d(
+                    tag,
+                    "=== clickTimer executed ($clickTimerId): clicks=$clickCount, hold=$clickPressed ========="
+                )
                 handleClicks(clickCount, clickPressed)
 
                 clickCount = 0
@@ -288,14 +302,17 @@ class MediaPlayerService : Service() {
             }, 650)
 
             clickTimerScheduled = true
-            Log.d(tag, "=== clickTimer scheduled ($clickTimerId): clicks=$clickCount, hold=$clickPressed =========")
+            Log.d(
+                tag,
+                "=== clickTimer scheduled ($clickTimerId): clicks=$clickCount, hold=$clickPressed ========="
+            )
             return true
         }
 
         fun handleClicks(clicks: Int, clickPressed: Boolean) {
-            /*
+
             stopSeeking = true
-            launch {
+            serviceScope.launch {
                 // the handlers should be configurlateinitable, defaults:
                 // hold -> jumpBackward
                 // click -> play / pause
@@ -304,93 +321,86 @@ class MediaPlayerService : Service() {
                 // click, click, hold -> rewind
                 // click, click, click -> previous (chapter or track)
 
-                withContext(coroutineContext) {
+                Log.d(tag, "=== handleClicks: count=$clicks,hold=$clickPressed")
 
-                }
-            }
-             */
-            Log.d(tag, "=== handleClicks: count=$clicks,hold=$clickPressed")
+                if (clickPressed) {
+                    lastStatePlaying = exoPlayer.isPlaying
+                    when (clicks) {
+                        1 -> {
+                            // jumpBackward()
+                            onSeek(-30000)
+                        }
 
-            if (clickPressed) {
-                lastStatePlaying = exoPlayer.isPlaying
-                when (clicks) {
-                    1 -> {
-                        // jumpBackward()
-                        this.onSeek(-30000)
-                    }
-                    2 -> {
-                        /*
-                        Log.d(tag, "=== fastForward init, stopSeeking=$stopSeeking")
+                        2 -> {
 
-                        stopSeeking = false
-                        val mainHandler = Handler(Looper.getMainLooper())
-                        mainHandler.post(object : Runnable {
-                            override fun run() {
-                                Log.d(tag, "=== fastForward run, stopSeeking=$stopSeeking")
-                                seekForward(10000 - seekPlayBufferTime)
-                                play()
-                                if(!stopSeeking) {
-                                    Log.d(tag, "=== fastForward recursion")
-                                    mainHandler.postDelayed(this, seekPlayBufferTime)
+                            Log.d(tag, "=== fastForward init, stopSeeking=$stopSeeking")
+                            stopSeeking = false
+                            val mainHandler = Handler(mainLooper)
+                            mainHandler.post(object : Runnable {
+                                override fun run() {
+                                    onSeek(10000 - seekPlayBufferTime)
+                                    onPlay()
+                                    if(!stopSeeking) {
+                                        mainHandler.postDelayed(this, seekPlayBufferTime)
+                                    }
                                 }
-                            }
-                        })
+                            })
+                        }
 
-                         */
-                    }
-
-                    3 -> {
-                        /*
-                        stopSeeking = false
-                        val mainHandler = Handler(Looper.getMainLooper())
-                        mainHandler.post(object : Runnable {
-                            override fun run() {
-                                seekBackward(10000 + seekPlayBufferTime)
-                                play()
-                                if(!stopSeeking) {
-                                    mainHandler.postDelayed(this, seekPlayBufferTime)
+                        3 -> {
+                            Log.d(tag, "=== rewind init, stopSeeking=$stopSeeking")
+                            stopSeeking = false
+                            val mainHandler = Handler(mainLooper)
+                            mainHandler.post(object : Runnable {
+                                override fun run() {
+                                    onSeek(-(10000 + seekPlayBufferTime))
+                                    onPlay()
+                                    if(!stopSeeking) {
+                                        mainHandler.postDelayed(this, seekPlayBufferTime)
+                                    }
                                 }
-                            }
-                        })
-
-                         */
-                    }
-                }
-            } else {
-                when (clicks) {
-                    0 -> {
-                        // switch from fastForward / rewind back to last playing state
-                        if (lastStatePlaying) {
-                            this.onPlay()
-                        } else {
-                            this.onPause()
+                            })
                         }
                     }
-
-                    1 -> {
-                        if (exoPlayer.isPlaying) {
-                          this.onPause()
-                        } else {
-                          this.onPlay()
+                } else {
+                    when (clicks) {
+                        0 -> {
+                            // switch from fastForward / rewind back to last playing state
+                            if (lastStatePlaying) {
+                                onPlay()
+                            } else {
+                                onPause()
+                            }
                         }
-                    }
 
-                    2 -> {
-                        // todo: implement "next chapter"
-                        // skipToNext()
-                        // seekForward(300000)
-                        this.onSeek(300000)
+                        1 -> {
+                            if (exoPlayer.isPlaying) {
+                                onPause()
+                            } else {
+                                onPlay()
+                            }
+                        }
 
-                    }
+                        2 -> {
+                            // todo: implement "next chapter"
+                            // workaround: just seek +5mins
+                            // skipToNext()
+                            // seekForward(300000)
+                            onSeek(300000)
+                        }
 
-                    3 -> {
-                        // todo: implement "previous chapter"
-                        // skipToPrevious()
-                        // seekBackward(300000)
-                        this.onSeek(-300000)
+                        3 -> {
+                            // todo: implement "previous chapter"
+                            // workaround: just seek -5mins
+                            // skipToPrevious()
+                            // seekBackward(300000)
+                            onSeek(-300000)
+                        }
                     }
                 }
             }
+
+
 
         }
 
@@ -404,8 +414,8 @@ class MediaPlayerService : Service() {
             it.playWhenReady = true
             it.addListener(playerListener)
         }
-
-        mediaSession = MediaSessionCompat(this, "MusifyPlaybackService").also {
+        //  "MusifyPlaybackService"
+        mediaSession = MediaSessionCompat(this,MediaPlayerService.KEY_TAG).also {
             it.isActive = true
             it.setCallback(mediaSessionCallBack)
             it.setPlaybackState(
@@ -514,6 +524,7 @@ class MediaPlayerService : Service() {
                         resumeSong()
                     }
                 }
+
                 ACTION_PAUSE -> pauseSong()
                 ACTION_STOP -> stopSong()
             }
